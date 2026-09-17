@@ -792,11 +792,11 @@ p {
       rgba(133, 158, 251, 0.32) 46% 53%,
       transparent 53% 100%
     ),
-    linear-gradient(
+      linear-gradient(
       160deg,
-      var(--panel-blue-bg-1) 0%,
-      var(--panel-blue-bg-2) 55%,
-      var(--panel-blue-bg-3) 100%
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(220, 228, 255, 0.88) 55%,
+      rgba(199, 212, 255, 0.88) 100%
     );
 }
 
@@ -834,9 +834,9 @@ p {
     ),
     linear-gradient(
       160deg,
-      var(--panel-pink-bg-1) 0%,
-      var(--panel-pink-bg-2) 55%,
-      var(--panel-pink-bg-3) 100%
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(255, 225, 244, 0.88) 55%,
+      rgba(255, 217, 242, 0.88) 100%
     );
 }
 
