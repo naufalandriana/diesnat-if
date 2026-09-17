@@ -786,12 +786,7 @@ p {
    ───────────────────────────────────────────────────────────────────────── */
 .result-panel--passed,
 .result-panel--blue {
-  background: linear-gradient(
-      120deg,
-      transparent 0 46%,
-      rgba(133, 158, 251, 0.32) 46% 53%,
-      transparent 53% 100%
-    ),
+  background:
       linear-gradient(
       160deg,
       rgba(255, 255, 255, 0.88) 0%,
@@ -826,12 +821,7 @@ p {
    ───────────────────────────────────────────────────────────────────────── */
 .result-panel--failed,
 .result-panel--pink {
-  background: linear-gradient(
-      115deg,
-      transparent 0 48%,
-      rgba(240, 93, 199, 0.24) 48% 54%,
-      transparent 54% 100%
-    ),
+  background:
     linear-gradient(
       160deg,
       rgba(255, 255, 255, 0.88) 0%,
