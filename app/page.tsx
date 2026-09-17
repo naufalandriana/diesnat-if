@@ -7,12 +7,16 @@ const CHECKING_STEPS = ["MENGECEK NIM", "MENCARI DATA", "MENYIAPKAN HASIL"];
 
 type Screen = "initial" | "checking" | "result";
 type ResultState = "passed" | "failed" | null;
+type Role = "participant" | "coordinator" | "leader" | "unknown";
 
 type CheckResponse = {
   found: boolean;
   passed: boolean;
+  role: Role;
   name?: string;
   division?: string | null;
+  position?: string | null;
+  whatsappLink?: string | null;
 };
 
 function normalizeNIM(value: string) {
@@ -34,7 +38,6 @@ async function fetchCheckNIM(nim: string): Promise<CheckResponse> {
     const res = await fetch("/api/check-nim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // HANYA kirim nim — tidak ada data lain yang bisa dimanipulasi client
       body: JSON.stringify({ nim }),
       signal: controller.signal,
       cache: "no-store",
@@ -47,7 +50,6 @@ async function fetchCheckNIM(nim: string): Promise<CheckResponse> {
 
     const data = (await res.json()) as CheckResponse;
 
-    // Validasi shape response — jangan pernah percaya response mentah
     if (typeof data?.found !== "boolean" || typeof data?.passed !== "boolean") {
       throw new Error("Respons server tidak valid.");
     }
@@ -131,8 +133,52 @@ function drawConfettiPiece(ctx: CanvasRenderingContext2D, piece: ConfettiPiece) 
   ctx.fill(); ctx.stroke(); ctx.restore();
 }
 
-// ── Copy helper (nama di-bold) ────────────────────────────────────────────────
-function renderPassedCopy(name: string | undefined, division: string | null | undefined) {
+// ── Copy helper ───────────────────────────────────────────────────────────────
+function renderPassedCopy(result: CheckResponse) {
+  const { role, name, division, position } = result;
+
+  // LEADER
+  if (role === "leader") {
+    if (name && position) {
+      return (
+        <>
+          Wowww!!, <strong>{name}</strong>! Kamu adalah{" "}
+          <strong>{position}</strong> DIESNATALIS INFORMATIKA 18.
+        </>
+      );
+    }
+    if (position) {
+      return (
+        <>
+          Kamu adalah <strong>{position}</strong> DIESNATALIS INFORMATIKA 18.
+        </>
+      );
+    }
+    return <>Kamu bagian dari jajaran Leader DIESNATALIS INFORMATIKA 18.</>;
+  }
+
+  // COORDINATOR
+  if (role === "coordinator") {
+    if (name && division) {
+      return (
+        <>
+          Widihhh!!, <strong>{name}</strong>! Kamu adalah{" "}
+          <strong>Koordinator Divisi {division}</strong> DIESNATALIS INFORMATIKA 18.
+        </>
+      );
+    }
+    if (division) {
+      return (
+        <>
+          Widihhh!! <strong>Koordinator Divisi {division}</strong> DIESNATALIS
+          INFORMATIKA 18.
+        </>
+      );
+    }
+    return <>Kamu bagian dari Koordinator DIESNATALIS INFORMATIKA 18.</>;
+  }
+
+  // PARTICIPANT (yang lolos)
   const formattedName = name ?? "";
   const formattedDivision = division?.trim();
 
@@ -144,7 +190,6 @@ function renderPassedCopy(name: string | undefined, division: string | null | un
       </>
     );
   }
-
   if (formattedName && !formattedDivision) {
     return (
       <>
@@ -153,24 +198,32 @@ function renderPassedCopy(name: string | undefined, division: string | null | un
       </>
     );
   }
-
   if (!formattedName && formattedDivision) {
     return (
       <>
-        Selamat! Kamu resmi menjadi bagian dari{" "}
-        Staff DIESNATALIS INFORMATIKA 18 sebagai{" "}
-        <strong>Divisi {formattedDivision}</strong>!
+        Selamat! Kamu resmi menjadi bagian dari Staff DIESNATALIS INFORMATIKA 18
+        sebagai <strong>Divisi {formattedDivision}</strong>!
       </>
     );
   }
-
   return (
     <>
-      Selamat, <strong>{formattedName}</strong>! Kamu resmi menjadi bagian dari{" "}
+      Selamat, <strong>{formattedName}</strong>! Kamu resmi menjadi bagian dari
       Staff DIESNATALIS INFORMATIKA 18 sebagai{" "}
       <strong>Divisi {formattedDivision}</strong>!
     </>
   );
+}
+
+// Helper untuk judul & subtitle berdasarkan role
+function getResultHeading(result: CheckResponse): { title: string; subtitle: string } {
+  if (result.role === "leader") {
+    return { title: "HEBATT! 🎉", subtitle: result.position?.toUpperCase() ?? "LEADER" };
+  }
+  if (result.role === "coordinator") {
+    return { title: "KERENN! 🎉", subtitle: "KOORDINATOR DIVISI" };
+  }
+  return { title: "YEAHHH! 🎉", subtitle: "KAMU LOLOS!" };
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -187,6 +240,8 @@ export default function Home() {
   const [resultSubtitle, setResultSubtitle] = useState("");
   const [resultCopy, setResultCopy] = useState<React.ReactNode>("");
   const [resultDivision, setResultDivision] = useState<string | null>(null);
+  const [resultWhatsapp, setResultWhatsapp] = useState<string | null>(null);
+  const [resultRole, setResultRole] = useState<Role>("unknown");
   const [checkDisabled, setCheckDisabled] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -315,17 +370,20 @@ export default function Home() {
       setResultNim(nim);
       setResultAnimated(false);
       setResultDivision(result.division ?? null);
+      setResultWhatsapp(result.whatsappLink ?? null);
+      setResultRole(result.role);
 
       if (notFound) {
         setResultTitle("HMM 🤔");
         setResultSubtitle("NIM TIDAK DITEMUKAN");
         setResultCopy(
-          "NIM kamu tidak terdaftar sebagai peserta seleksi Staff DIESNATALIS INFORMATIKA 18. Coba cek ulang NIM-nya, ya!"
+          "NIM kamu tidak terdaftar sebagai peserta Open Recruitment, DIESNATALIS INFORMATIKA 18. Coba cek ulang NIM-nya, ya!"
         );
       } else if (didPass) {
-        setResultTitle("YEAHHH! 🎉");
-        setResultSubtitle("KAMU LOLOS!");
-        setResultCopy(renderPassedCopy(result.name,  result.division));
+        const heading = getResultHeading(result);
+        setResultTitle(heading.title);
+        setResultSubtitle(heading.subtitle);
+        setResultCopy(renderPassedCopy(result));
       } else {
         setResultTitle("YAHH 😭");
         setResultSubtitle("BELUM LOLOS");
@@ -378,7 +436,6 @@ export default function Home() {
       try {
         const [result] = await Promise.all([fetchCheckNIM(nim), minWait]);
 
-        // Guard race condition: kalau user reset / ganti NIM saat loading, abaikan
         if (latestNimRef.current !== nim) return;
 
         showResult(nim, result);
@@ -418,6 +475,8 @@ export default function Home() {
     setResultAnimated(false);
     setResultState(null);
     setResultDivision(null);
+    setResultWhatsapp(null);
+    setResultRole("unknown");
     showScreen("initial");
     setNimValue("");
     setFieldMessage("");
@@ -439,11 +498,19 @@ export default function Home() {
   };
 
   const resultPanelClass = [
-    "result-panel",
-    resultState === "passed" ? "result-panel--passed" : "",
-    resultState === "failed" ? "result-panel--failed" : "",
-    resultAnimated ? "is-animated" : "",
-  ].filter(Boolean).join(" ");
+  "result-panel",
+  resultState === "passed" ? "result-panel--passed" : "",
+  resultState === "failed" ? "result-panel--failed" : "",
+  resultAnimated ? "is-animated" : "",
+].filter(Boolean).join(" ");
+
+  // Tentukan apakah perlu tampil button WA:
+  // - peserta yang lolos DAN punya link WA koordinator → tampil
+  // - koordinator / leader → tidak tampil
+  const showWhatsappButton =
+    resultState === "passed" &&
+    resultRole === "participant" &&
+    !!resultWhatsapp;
 
   return (
     <>
@@ -536,6 +603,25 @@ export default function Home() {
                 <p className="result-subtitle">{resultSubtitle}</p>
                 <p className="result-nim">{resultNim}</p>
                 <p className="result-copy">{resultCopy}</p>
+
+                {/* INSTRUKSI + BUTTON WA — hanya untuk peserta yang lolos */}
+                {showWhatsappButton && (
+                  <div className="whatsapp-section">
+                    <p className="whatsapp-instruction">
+                      Langkah selanjutnya: hubungi koordinator divisimu untuk info
+                      grup & arahan selanjutnya ya!
+                    </p>
+                    <a
+                      className="whatsapp-button"
+                      href={resultWhatsapp ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      HUBUNGI KOORDINATOR <span aria-hidden="true">💬</span>
+                    </a>
+                  </div>
+                )}
+
                 <button ref={resetButtonRef} className="reset-button" type="button" onClick={handleReset}>
                   CEK NIM LAIN ↻
                 </button>
